@@ -19,6 +19,7 @@ def readCSV(fileLocation):
     return pearsonDF
     
 def convertToHeatmap(df, name, isTumor, pdfFolder):
+    """Converts a pearson correlation chart into a heatmap."""
     plt.ioff()
     if len(df) > 2:
         if(isTumor):
@@ -99,7 +100,7 @@ def createAllMFIs(mfiDF, mfiTumorFolder, mfiNormalFolder, pearsonTumorFolder, pe
                 tumorDF = tumorDF.dropna(axis=1, how='all')
                 normalDF = normalDF.dropna(axis=1, how='all')
                 
-                if (len(tumorDF) > 0):
+                if (len(tumorDF) > 2):
                     finalTumorTable = pd.pivot_table(tumorDF, index="Sample Name")
                     outputMFITable(finalTumorTable, sp, st, True, mfiTumorFolder)
                     dfPearson = convertToPearson(finalTumorTable, sp, st, pearsonTumorFolder)
@@ -126,7 +127,7 @@ def createMFIByCT(mfiDF, cellType, mfiTumorFolder, mfiNormalFolder, pearsonNorma
             normalDF = onlyStain[onlyStain["Sample Name"].str.contains("_N")]
             tumorDF = tumorDF.dropna(axis=1, how='all')
             normalDF = normalDF.dropna(axis=1, how='all')
-            if (len(tumorDF) > 0):
+            if (len(tumorDF) > 2):
                 finalTumorTable = pd.pivot_table(tumorDF, index="Sample Name")
                 outputMFITable(finalTumorTable, cellType, st, True, mfiTumorFolder)
                 dfPearson = convertToPearson(finalTumorTable, cellType, st, pearsonTumorFolder)
