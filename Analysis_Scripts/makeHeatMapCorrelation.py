@@ -27,6 +27,8 @@ def convertToHeatmap(df, name, isTumor, pdfFolder):
             sns.heatmap(df, cmap="RdBu_r")
             ax.set_title(name, fontsize=15)
             pdfName = pdfFolder + name + ".pdf"
+            plt.yticks(rotation=0)
+            plt.xticks(rotation=90)
             fig.savefig(pdfName, bbox_inches='tight')
             plt.close()
             
@@ -35,6 +37,8 @@ def convertToHeatmap(df, name, isTumor, pdfFolder):
             fig, ax = plt.subplots(figsize=(10,10))
             sns.heatmap(df, cmap="RdBu_r")
             ax.set_title(name, fontsize=15)
+            plt.yticks(rotation=0)
+            plt.xticks(rotation=90)
             pdfName = pdfFolder + name + ".pdf"
             fig.savefig(pdfName, bbox_inches='tight')
             plt.close()
