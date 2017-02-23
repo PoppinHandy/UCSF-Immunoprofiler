@@ -1,52 +1,62 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Feb 14 15:03:16 2017
+Created on Tue Feb 21 13:48:17 2017
 
 @author: andyp
 """
-
-import pandas as pd
-from matplotlib import pyplot as plt
-import seaborn as sns
-import glob
-from scipy.stats.stats import pearsonr
-import numpy as np
 import os
+import seaborn as sns
+import pandas as pd
+import glob
+import matplotlib.pyplot as plt
 
+def readinMFIDF(location):
+    mfiDFList = list()
+    for file in glob.glob(location):
+        mfiDFList.append(pd.read_csv(file, sep="\t", header=0))
+    mfiDF = pd.concat(mfiDFList)
+    return mfiDF
+    
+def setUpFolders(folderList):
+    for f in folderList:
+        os.makedirs(os.path.dirname(f), exist_ok=True)
+ 
 def deleteCols(df, colList):
     """Deletes all columns in a list from the dataframe."""
     for c in colList:
         del df[c]
     return df
-        
+
 def convertToHeatmap(df, name, pdfFolder):
     """Converts a pearson correlation chart into a heatmap."""
     plt.ioff()
     if len(df) > 2:
         os.makedirs(os.path.dirname(pdfFolder), exist_ok=True)
-        fig, ax = plt.subplots(figsize=(len(df), len(df)))        
+        fig, ax = plt.subplots(figsize=(df.shape[1], df.shape[0]))        
         cbar = fig.add_axes([.905, .6, .02, .1])
-        #print(df.index.get_level_values(0))
-        sns.heatmap(df, ax = ax, cmap="RdBu_r", cbar_ax=cbar, cbar=True)
+        sns.heatmap(df, ax = ax, cmap="Blues", cbar_ax=cbar, cbar=True)
         ax.set_title(name, fontsize=20)
         pdfName = pdfFolder + name + ".pdf"
         plt.yticks(rotation=0, fontsize=15)
         plt.xticks(rotation=90, fontsize=15)
+        ax.set_xlabel("") # Adds a label called Parent-None without this
         fig.savefig(pdfName, bbox_inches='tight')
         plt.close()
-    
-    
-def mfiToHeatmap(mfiDF, cellTypeList, mfiTumorFolder, mfiNormalFolder, pearsonNormalFolder, pearsonTumorFolder, heatmapTumorFolder, heatmapNormalFolder):
+        
+def mfiToHeatmap(mfiDF, cellTypeList, mfiTumorFolder, mfiNormalFolder, heatmapTumorFolder, heatmapNormalFolder):
     """Pipeline that creates MFI Tables, Pearsons and heatmap from inputted data, separted by Tumor and Normal, filtered out by Cell Types"""
     stains = set(mfiDF["Stain Name"].values)
+    
+    # Removing stains in sample names to avoid redundancy
+    df_Samp = list(mfiDF["Sample Name"].values)                
+    sampleSet = list()
+    for sn in df_Samp:
+        name = sn.split("_")[0] + "_" + sn.split("_")[1]
+        sampleSet.append(name)
+    mfiDF.loc[:, "Sample Name"] = sampleSet
+
     for st in stains:
         onlyStain = mfiDF[mfiDF.loc[:, "Stain Name"] == st]
-        
-        # Weird naming issue
-        if 'HLADR HI' in onlyStain.columns:
-            if 'LIVEDEAD_HLADR HI' in onlyStain.columns:
-                onlyStain['HLADR HI'].fillna(onlyStain['LIVEDEAD_HLADR HI'], inplace=True)
-                del onlyStain['LIVEDEAD_HLADR HI']
         
         tumorList = list()
         normalList = list()
@@ -78,8 +88,7 @@ def mfiToHeatmap(mfiDF, cellTypeList, mfiTumorFolder, mfiNormalFolder, pearsonNo
                 fi = open(f, 'w')
                 tumor.to_csv(fi)
                 fi.close()
-                pearsonDF = convertToPearson(tumor, st, pearsonTumorFolder)
-                convertToHeatmap(pearsonDF, st, heatmapTumorFolder)
+                convertToHeatmap(tumor, st, heatmapTumorFolder)
                 
             else:
                 tumor = pd.concat(tumorList, axis=1)
@@ -87,8 +96,7 @@ def mfiToHeatmap(mfiDF, cellTypeList, mfiTumorFolder, mfiNormalFolder, pearsonNo
                 fi = open(f, 'w')
                 tumor.to_csv(fi)
                 fi.close()
-                pearsonDF = convertToPearson(tumor, st, pearsonTumorFolder)
-                convertToHeatmap(pearsonDF, st, heatmapTumorFolder)
+                convertToHeatmap(tumor, st, heatmapTumorFolder)
                 
         if(len(normalList) > 0):
             if(len(normalList) == 1):
@@ -97,8 +105,7 @@ def mfiToHeatmap(mfiDF, cellTypeList, mfiTumorFolder, mfiNormalFolder, pearsonNo
                 fi = open(f, 'w')
                 normal.to_csv(fi)
                 fi.close()
-                pearsonDF = convertToPearson(normal, st, pearsonNormalFolder)
-                convertToHeatmap(pearsonDF, st, heatmapNormalFolder)
+                convertToHeatmap(normal, st, heatmapNormalFolder)
                 
             else:
                 normal = pd.concat(normalList, axis=1)
@@ -106,61 +113,8 @@ def mfiToHeatmap(mfiDF, cellTypeList, mfiTumorFolder, mfiNormalFolder, pearsonNo
                 fi = open(f, 'w')
                 normal.to_csv(fi)
                 fi.close()
-                pearsonDF = convertToPearson(normal, st, pearsonNormalFolder)
-                convertToHeatmap(pearsonDF, st, heatmapNormalFolder)
-
-def convertToPearson(df, stainName, mfiFolder):
-    """Takes in a dataframe and converts the values to pearson correlation values."""
-    colLen = list()
-    for c in df.columns:
-        colLen.append(len(df[c]))
-    maxValue = np.max(colLen)
-    for c in df.columns:
-        if (len(df[c]) != maxValue):
-            del df[c]
-            
-    col = list(df.columns.values) # format is (cell type, mfi gate name)
-    pearsonDict = dict()
-    pValueDict = dict()
-    for c in range(len(col)):
-        name = col[c]
-        if name not in pearsonDict.keys():
-            pearsonDict[name] = dict()
-            pValueDict[name] = dict()
-        for c2 in range(len(col)):
-            if (c2 != c):
-                name2 = col[c2]
-                x = df[name].values
-                y = df[name2].values
-            
-                # Filtering out any blanks since pearsonr dislikes nan
-                nas = np.logical_or(np.isnan(x), np.isnan(y))
-                pearsonDict[name][name2], pValueDict[name][name2] = pearsonr(x[~nas], y[~nas])
+                convertToHeatmap(normal, st, heatmapNormalFolder)
                 
-    # dictionary keys are tuples read in from multiindex
-    mdx = pd.MultiIndex.from_tuples(pearsonDict.keys())
-    pearsonDF = pd.DataFrame(pearsonDict, index=mdx, columns=mdx)
-    pearsonDF = pearsonDF.sort_index(axis=1)
-    pearsonDF = pearsonDF.sort_index(axis=0)
-    pearsonDF = pearsonDF.dropna(axis=1, how='all')
-    pearsonDF = pearsonDF.dropna(axis=0, how='all')
-    f = mfiFolder + "Correlation of Percent MFI in " + stainName  + ".csv"
-    file = open(f, 'w')
-    pearsonDF.to_csv(file)
-    file.close()
-    return pearsonDF
-    
-def readinMFIDF(location):
-    mfiDFList = list()
-    for file in glob.glob(location):
-        mfiDFList.append(pd.read_csv(file, sep="\t", header=0))
-    mfiDF = pd.concat(mfiDFList)
-    return mfiDF
-    
-def setUpFolders(folderList):
-    for f in folderList:
-        os.makedirs(os.path.dirname(f), exist_ok=True)
-        
 if __name__ == "__main__":
     popOption = input("Make sure the files are from the Separate By Stain Folder generated by parsePopulations script. Select population? [y/n] (if n, then program does all populations in each stain) ")
     if (popOption == "y"):
@@ -172,38 +126,34 @@ if __name__ == "__main__":
         except FileNotFoundError:
             print("File of MFIs not found, make sure they are in a folder labeled MFI in the same location as this script.")
         else:
-            majorFolder = "Heat Map Query Output/"
+            majorFolder = "% Composition vs Sample Heat Map Output/"
             mfiTumorFolder = majorFolder + "MFI Tables/Tumor/"
             mfiNormalFolder = majorFolder + "MFI Tables/Normal/"
-            pearsonTumorFolder = majorFolder + "Pearson Tumor/"
-            pearsonNormalFolder = majorFolder + "Pearson Normal/"
             heatmapTumorFolder = majorFolder + "Heat Maps/Tumor/"
             heatmapNormalFolder = majorFolder + "Heat Maps/Normal/"
-            setUpFolders([majorFolder, mfiTumorFolder, mfiNormalFolder, pearsonNormalFolder, pearsonTumorFolder, heatmapTumorFolder, heatmapNormalFolder])
-            mfiToHeatmap(mfiDF, cellTypeList, mfiTumorFolder, mfiNormalFolder, pearsonNormalFolder, pearsonTumorFolder, heatmapTumorFolder, heatmapNormalFolder)
+            setUpFolders([majorFolder, mfiTumorFolder, mfiNormalFolder, heatmapTumorFolder, heatmapNormalFolder])
+            mfiToHeatmap(mfiDF, cellTypeList, mfiTumorFolder, mfiNormalFolder, heatmapTumorFolder, heatmapNormalFolder)
             
     elif(popOption == "n"):
         mfiLocation = "MFI/*.tsv"
         try:
             mfiDF = readinMFIDF(mfiLocation)
-            # Weird naming issue
             if 'HLADR HI' in mfiDF.columns:
                 if 'LIVEDEAD_HLADR HI' in mfiDF.columns:
                     mfiDF['HLADR HI'].fillna(mfiDF['LIVEDEAD_HLADR HI'], inplace=True)
                     del mfiDF['LIVEDEAD_HLADR HI']
+            
         except FileNotFoundError:
             print("File of MFIs not found, make sure they are in a folder labeled MFI in the same location as this script, and that each file is separated by stain and sample.")
         else:
             cellTypeList = set(mfiDF["Parent"].values)         
-            majorFolder = "Heat Map Query Output/"
+            majorFolder = "% Composition vs Sample Heat Map Output/"
             mfiTumorFolder = majorFolder + "MFI Tables/Tumor/"
             mfiNormalFolder = majorFolder + "MFI Tables/Normal/"
-            pearsonTumorFolder = majorFolder + "Pearson Tumor/"
-            pearsonNormalFolder = majorFolder + "Pearson Normal/"
             heatmapTumorFolder = majorFolder + "Heat Maps/Tumor/"
             heatmapNormalFolder = majorFolder + "Heat Maps/Normal/"
-            setUpFolders([majorFolder, mfiTumorFolder, mfiNormalFolder, pearsonNormalFolder, pearsonTumorFolder, heatmapTumorFolder, heatmapNormalFolder])
-            mfiToHeatmap(mfiDF, cellTypeList, mfiTumorFolder, mfiNormalFolder, pearsonNormalFolder, pearsonTumorFolder, heatmapTumorFolder, heatmapNormalFolder)
+            setUpFolders([majorFolder, mfiTumorFolder, mfiNormalFolder, heatmapTumorFolder, heatmapNormalFolder])
+            mfiToHeatmap(mfiDF, cellTypeList, mfiTumorFolder, mfiNormalFolder, heatmapTumorFolder, heatmapNormalFolder)
     else:
         print("You put in an incorrect response! Please enter y or n next time.")
         raise
