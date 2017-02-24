@@ -266,7 +266,7 @@ def outputMFI(mfiFolder, mfiTable, col_values):
                     mfiSeparateByStain = pd.pivot_table(mfiSeparateByStain, index=["Sample Name", "Stain Name", "Parent", "Grandparent"], columns="Cell Type", values=col_values)
                     mfiSeparateByStain.to_csv(f, sep="\t")
                     f.write("\n")
-                    
+
                     mfiSeparateByStain.columns=[c.upper() for c in mfiSeparateByStain.columns]
                     mfiSeparateByStain.to_csv(f2, sep="\t")
                     f2.write("\n")
@@ -347,25 +347,19 @@ def populationSummaryRunner(wspLocation):
     f_pop.close()
     
 # For importing to other modules
-def getGlobalDB():
-    wspLocation = "Colorectal_WSP_Practice/*.wsp"
+def createGlobalDB(wspLocation):
     dfList = list()
     for f in glob.glob(wspLocation):
         st = generatePopulationsSummary(f, math.inf, math.inf, False)
         dfList.append(st) 
     df_all_concat = pd.concat(dfList)
     df_all_concat = filterOutMFIs(df_all_concat)
-    return df_all_concat
-
-def main():
-    wspLocation = "Colorectal WSPs/*.wsp"
-    #populationSummaryRunner(wspLocation)
+    f = open("populationDB.csv", 'w')
+    df_all_concat.to_csv(f)   
     
-    
-if __name__ == "__main__":
-    main()
-    wspLocation = "Colorectal WSPs/*.wsp"
-    #populationSummaryRunner(wspLocation)
+if __name__ == "__main__":    
+    wspLocation = "*.wsp"
+    populationSummaryRunner(wspLocation)
     mfiSummaryRunner(wspLocation)
-
+    createGlobalDB(wspLocation)
                 

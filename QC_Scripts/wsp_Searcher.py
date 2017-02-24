@@ -4,8 +4,6 @@ Created on Fri Jan 13 15:02:52 2017
 
 @author: andyp
 """
-
-import parse_Populations
 import os
 import pandas as pd
 
@@ -24,6 +22,9 @@ def locate_Population(filename, col_name, row_name, df):
             # This is where analyzing starts, if you change the dataframe it refers to, it will affect everything from here on
             df_QueryCount = df[df.loc[:, c] == r]
             df_QueryPercent = df[df.loc[:, c] == r]
+            if (len(df_QueryCount) == 0):
+                print("No data could be found for ", r)
+                return
             filename.write("Percentage of Parent\n")
             df_Percent = formatTable(df_QueryPercent, "Percentage of Parent")
             df_Percent.to_csv(filename, sep="\t")
@@ -31,6 +32,7 @@ def locate_Population(filename, col_name, row_name, df):
             filename.write("Counts\n")
             df_Count = formatTable(df_QueryCount, "Count")
             df_Count.to_csv(filename, sep="\t")
+            return
 #==============================================================================
 #             df_samples = set(df_Query["Sample Name"].values)
 #             end_Set = set()
@@ -99,7 +101,7 @@ def deleteCols(df, colList):
 if __name__ == '__main__':
     
     colQuery = list()
-    df = parse_Populations.getGlobalDB()
+    df = pd.read_csv("populationDB.csv")
     
     oneFile = input("All in one file? [y/n] ") 
     cn = input("What column are you looking for? Enter one of these choices [Sample Name, Cell Type, Stain Name, Parent, Count, Percentage of Parent] exactly as printed (enter 0 to quit): ")

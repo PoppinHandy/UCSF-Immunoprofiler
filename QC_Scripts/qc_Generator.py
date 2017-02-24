@@ -235,7 +235,7 @@ def deleteCols(df, colList):
 if __name__ == '__main__':
 
     # Formatting db
-    df_all_concat = parse_Populations.getGlobalDB()
+    df_all_concat = pd.read_csv("populationDB.csv")
     df = deleteCols(df_all_concat, ["ID", "Parent ID"])
     
     # Makes a folder containing the query outputs

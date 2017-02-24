@@ -4,7 +4,7 @@ Created on Fri Jan 27 11:52:50 2017
 
 @author: andyp
 """
-import parse_Populations
+
 import pandas as pd
 import numpy as np
 import os
@@ -34,8 +34,6 @@ def makeGraph(cell_Type, df, dataType):
                         ax.set_xlim(-5, 105)
                         ax.set_ylim(-5, 105)
                     else:
-                        ax.set_yscale('log')
-                        ax.set_xscale('log')
                         ax.set_xlim(0, 100000)
                         ax.set_ylim(0, 100000)
                         
@@ -128,7 +126,7 @@ if __name__ == '__main__':
     
     # Makes a folder containing the query outputs
     os.makedirs(os.path.dirname(graph_file), exist_ok=True)
-    df = parse_Populations.getGlobalDB()
+    df = pd.read_csv("populationDB.csv")
     
     graph_List = ["CD45+", "CD3+ all", "Q1: CD8a- , CD4+"]
     for graphs in graph_List:     
