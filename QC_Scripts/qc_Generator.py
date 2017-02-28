@@ -5,7 +5,6 @@ Created on Wed Jan 18 09:04:40 2017
 @author: andyp
 """
 
-import parse_Populations
 import pandas as pd
 import os
 import math
@@ -151,6 +150,15 @@ def formatQCSheet(sampleName, dfDict):
                 percentList = list(hasSample["Percentage of Grandparent"].values)
                 for s in range(len(stainList)):
                     QC.loc[QC.shape[0]] = [sampleName, stainList[s], ct, percentList[s]]
+        elif dfName == "%B/CD45":
+            df = dfDict[dfName]
+            hasSample = df[df["Sample Name"].str.contains(sampleName, regex=False)]
+            ct = dfName
+            stainList = list(hasSample["Stain Name"].values)
+            percentList = list(hasSample["Percentage of Grandparent"].values)
+            for s in range(len(stainList)):
+                QC.loc[QC.shape[0]] = [sampleName, stainList[s], ct, percentList[s]]
+                
         elif dfName == "%CD8/CD3" or dfName == "%CD4/CD3":
             df = dfDict[dfName]
             hasSample = df[df["Sample Name"].str.contains(sampleName, regex=False)]
@@ -160,7 +168,7 @@ def formatQCSheet(sampleName, dfDict):
             hasSample = df[df["Sample Name"].str.contains(sampleName, regex=False)]
             ct = dfName
             stainList = list(hasSample["Stain Name"].values)
-            percentList = list(hasSample["Percentage of Grandparent"].values)
+            percentList = list(hasSample["Percentage of Parent"].values)
             for s in range(len(stainList)):
                 QC.loc[QC.shape[0]] = [sampleName, stainList[s], ct, percentList[s]]
     return QC
@@ -240,7 +248,6 @@ if __name__ == '__main__':
     
     # Makes a folder containing the query outputs
     pop_file = "QC/QC_all_wsps.tsv"
-    #pop_file = "QC_Practice/QC_all_wsps.tsv"
     os.makedirs(os.path.dirname(pop_file), exist_ok=True)
     f = open(pop_file, "w")
     make_QC_Sheet(f, df)
