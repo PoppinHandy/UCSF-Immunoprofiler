@@ -94,6 +94,9 @@ def make_QC_Sheet(filename, df):
         compare_Percentages(filename, dfQC, cellTypeList)
         filename.write("\n\n")
         compare_Percentages(iF, dfQC, cellTypeList)
+        
+        includeAnnotations(filename, df, s)
+        includeAnnotations(iF, df, s)
         iF.close()
         
 def calculateCD8AndCD4(dfCD):
@@ -179,7 +182,8 @@ def compare_Percentages(filename, df_Query, cellTypeList):
     for ct in cellTypeList:
         df_Match_Stain = df_Query[df_Query.loc[:, "Cell Type"] == ct]
         if len(df_Match_Stain) > 1:
-            df_Match_Stain = df_Match_Stain.sort_values(["Stain Name"]) 
+            df_Match_Stain = df_Match_Stain.sort_values(["Stain Name"])
+            stain_Comparison = list(df_Match_Stain.loc[:, "Stain Name"])
             count_Comparison = list(df_Match_Stain.loc[:, "Percentage"])   # Inputting the counts into a list for comparison
             
             # Tricky subtraction, subtracts all the values in the list from each other, if greater than 10% than report
@@ -188,18 +192,36 @@ def compare_Percentages(filename, df_Query, cellTypeList):
                     diff = math.fabs(float(count_Comparison[count]) - float(count_Comparison[count_forwards]))
                     #print(str(float(count_Comparison[count])) + "-" + str(float(count_Comparison[count_forwards])))
                     if (diff > 10):
-                        notes_Stmt = ct + " Stain " + str(count + 1) + " ," + str(count_forwards + 1) + "\tPercent Difference: " + ("%.3f" % diff)
+                        notes_Stmt = ct + " " + str(stain_Comparison[count]) + " ," + str(stain_Comparison[count_forwards]) + "\tPercent Difference: " + ("%.3f" % diff)
                         notes.append(notes_Stmt)
     if(len(notes) > 0):
         filename.write("\n")
         for n in notes:
             filename.write(n)
             filename.write("\n")
-        
-        
+
+def includeAnnotations(filename, df, sampleName):
+    dfSample = df[df["Sample Name"].str.contains(sampleName)]
+    dfAnnotation = dfSample[dfSample.loc[:, "Annotation"].notnull()]
+    annotateTextList = list()
+    if len(dfAnnotation) > 0:
+        stainOnly = sorted(set(dfAnnotation["Stain Name"].values))
+        for s in stainOnly:
+            stainOnlyDF = dfAnnotation[dfAnnotation.loc[:, "Stain Name"] == s]
+            cellTypeList = list(stainOnlyDF["Cell Type"].values)
+            for c in cellTypeList:
+                annotateText = c + " in " + s + " has an N/A."
+                annotateTextList.append(annotateText)
+                
+    if(len(annotateTextList) > 0):
+        for n in annotateTextList:
+            filename.write(n)
+            filename.write("\n")  
+    filename.write("\n")
+            
 # Function made purely for calculating for Stain 2
 def calculations(df_C):
-    
+    """Calculates lymphocyte and myeloid percents."""
     end_Set = set()
     df_Samples = set(df_C["Sample Name"].values)
     lymphocytes_Dict = dict()
@@ -215,14 +237,18 @@ def calculations(df_C):
         df_Match_Name = df_C[df_C["Sample Name"].str.contains(sample)]
         cd45_List = list(df_Match_Name[df_Match_Name["Cell Type"] == "CD45+"]["Count"].values)
         cd45 = float(cd45_List[0])
-                
+            
         # For lymphocytes
         b_cell = df_Match_Name["Cell Type"] == "B-cells"
         NK = df_Match_Name["Cell Type"] == "HLADR-, CD3-, CD56+ (NK)"
         CD3 = df_Match_Name["Cell Type"] == "CD3+ all"
-        BNKCD3 = pd.to_numeric(df_Match_Name[b_cell | NK | CD3]["Count"]).sum()
-        lymphocytes_Dict[sample] = float(BNKCD3/cd45) * 100
         
+        if (cd45 != 0):             
+            BNKCD3 = pd.to_numeric(df_Match_Name[b_cell | NK | CD3]["Count"]).sum()
+            lymphocytes_Dict[sample] = float(BNKCD3/cd45) * 100
+        else:
+            lymphocytes_Dict[sample] = "N/A"
+            
         # For myeloids
         HLADR_List = list(df_Match_Name[df_Match_Name["Cell Type"] == "CD3-, HLADR+"]["Percentage of Parent"].values)
         b_cell_List = list(df_Match_Name[b_cell]["Percentage of Parent"].values)

@@ -19,7 +19,7 @@ def generatePopulationsSummary(workspace_path, common_count_limit, rare_count_li
     root = tree.getroot()
     
     # Creating the headers for tsv
-    stain_Table = pd.DataFrame(columns=["Stain Name", "Sample Name", "Cell Type", "Count", "ID", "Parent ID"])
+    stain_Table = pd.DataFrame(columns=["Stain Name", "Sample Name", "Cell Type", "Count", "ID", "Parent ID", "Annotation"])
     stain_Table["Count"] = stain_Table["Count"].astype('float64')
     
     # Finding the tube name
@@ -29,9 +29,13 @@ def generatePopulationsSummary(workspace_path, common_count_limit, rare_count_li
         for pop in tube_info.findall(".//Population"):
             ids = 0
             parent_id = 0
+            annotation = pop.attrib.get("annotation")
             stain_group = pop.attrib.get("owningGroup")
             name = pop.attrib.get("name")
             count = int(pop.attrib.get("count"))
+            
+            if (annotation == "N/A"):
+                annotation = "Not Applicable"
             # if false, will not read in mfi gate entries into the dataframe
             if (include_mfis == False):
                 if (not " hi" in name):            
@@ -65,7 +69,7 @@ def generatePopulationsSummary(workspace_path, common_count_limit, rare_count_li
                                 ids = s[1]
                                 parent_id = s[0]
                                     # Adding data to be displayed to the final table
-                    stain_Table.loc[stain_Table.shape[0]] = [stain_group, tube_Name, name, count, ids, parent_id]
+                    stain_Table.loc[stain_Table.shape[0]] = [stain_group, tube_Name, name, count, ids, parent_id, annotation]
                 
     stain_Table = stain_Table.sort_values(["Sample Name", "Stain Name"]) # Ordering the table to prevent future life stresses
     
@@ -84,7 +88,7 @@ def generatePopulationsSummary(workspace_path, common_count_limit, rare_count_li
 #     stain_Table["Percentage of Grandparent"] = stain_Table["Percentage of Grandparent"].astype("float64")
 #     stain_Table["Cell Type"] = stain_Table["Cell Type"].astype('category')
 #==============================================================================
-    stain_Table = stain_Table[["Sample Name", "Cell Type", "Stain Name", "Parent", "Count", "Percentage of Parent", "ID", "Parent ID", "Grandparent", "Percentage of Grandparent"]] 
+    stain_Table = stain_Table[["Sample Name", "Cell Type", "Stain Name", "Parent", "Count", "Percentage of Parent", "ID", "Parent ID", "Grandparent", "Percentage of Grandparent", "Annotation"]] 
     return stain_Table
     
 def defineParents(df, row_count, generations):
@@ -285,30 +289,35 @@ def mfiSummaryRunner(wspLocation):
     mfiFiles = "WSP_Outputs/MFIs/MFI Values/"
     mfiPercentFiles = "WSP_Outputs/MFIs/MFI Percents/"
     mfiCountFiles = "WSP_Outputs/MFIs/MFI Counts/"
-    mfiAll = "WSP_Outputs/MFIs/allMFis.tsv"
+    #mfiAll = "WSP_Outputs/MFIs/allMFis.tsv"
     
     # Creating new folder
     os.makedirs(os.path.dirname(mfiFiles), exist_ok=True)
     os.makedirs(os.path.dirname(mfiPercentFiles), exist_ok=True)
     os.makedirs(os.path.dirname(mfiCountFiles), exist_ok=True)
-    os.makedirs(os.path.dirname(mfiAll), exist_ok=True)
+    #os.makedirs(os.path.dirname(mfiAll), exist_ok=True)
     
     for f in glob.glob(wspLocation):
         generateMFISummary(f, mfiFiles, mfiPercentFiles, mfiCountFiles)
     
-    allMFIFiles = list()
-    allMFIFiles.append(glob.glob("WSP_Outputs/MFIs/MFI Values/*.tsv"))
-    allMFIFiles.append(glob.glob("WSP_Outputs/MFIs/MFI Percents/*.tsv"))
-    allMFIFiles.append(glob.glob("WSP_Outputs/MFIs/MFI Counts/*.tsv"))
+#==============================================================================
+#     allMFIFiles = list()
+#     allMFIFiles.append(glob.glob("WSP_Outputs/MFIs/MFI Values/*.tsv"))
+#     allMFIFiles.append(glob.glob("WSP_Outputs/MFIs/MFI Percents/*.tsv"))
+#     allMFIFiles.append(glob.glob("WSP_Outputs/MFIs/MFI Counts/*.tsv"))
+#==============================================================================
     
-    with open(mfiAll, 'w') as file:
-        for outer in allMFIFiles:
-            for f in outer:
-                splitName = f.split("\\")[1]
-                file.write("Showing " + splitName + "\n")
-                for line in open(f, 'r'):
-                    file.write(line)
-        file.write("\n")
+    # Doesn't work with Macs
+#==============================================================================
+#     with open(mfiAll, 'w') as file:
+#         for outer in allMFIFiles:
+#             for f in outer:
+#                 splitName = f.split("\\")[1]
+#                 file.write("Showing " + splitName + "\n")
+#                 for line in open(f, 'r'):
+#                     file.write(line)
+#         file.write("\n")
+#==============================================================================
     
         
 def populationSummaryRunner(wspLocation):
@@ -356,6 +365,8 @@ def createGlobalDB(wspLocation):
     df_all_concat = filterOutMFIs(df_all_concat)
     f = open("populationDB.csv", 'w')
     df_all_concat.to_csv(f)   
+    f.close()
+    return createGlobalDB
     
 if __name__ == "__main__":    
     wspLocation = "*.wsp"
